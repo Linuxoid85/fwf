@@ -67,6 +67,14 @@ class FForecast:
         self.len_hourly = len(self.data["hourly"])
         self.len_daily = len(self.data["daily"])
 
+    def _get_it(self) -> int:
+        if self._type == "daily":
+            return self.len_daily
+        elif self._type == "hourly":
+            return self.len_hourly
+        else:
+            return -1
+
     def make_cache(self, cache_dir):
         if not os.path.exists(cache_dir):
             raise FileNotFoundError
@@ -77,16 +85,30 @@ class FForecast:
     def timezone(self) -> str:
         return self.data["timezone"]
 
+    def dt(self) -> list:
+        data_list = []
+
+        if self._type == "current":
+            return self._type_d["dt"]
+
+        it = self._get_it()
+
+        for i in range(it):
+            data = self._type_d[i]["dt"]
+            data_list.append(data)
+
+        return data_list
+
     def sun_rise_set(self) -> list:
         if self._type == "current":
             data_dict = {
-                "sunrise": self._type_d["sunrise"]
+                "sunrise": self._type_d["sunrise"],
                 "sunset": self._type_d["sunset"]
             }
             return [data_dict]
         elif self._type == "daily":
             data = []
-            for i in self.len_daily:
+            for i in range(self.len_daily):
                 data_dict = {}
 
                 data_dict["sunrise"] = self._type_d[i]["sunrise"]
@@ -121,12 +143,7 @@ class FForecast:
             }
             data_list.append(data_dict)
 
-        elif self._type == "hourly":
-            it = self.len_hourly
-
-        else:
-            it = self.len_daily
-
+        it = self._get_it()
         for i in range(it):
             data_dict["temp"] = dt[i]["temp"]
             data_dict["feels_like"] = dt[i]["feels_like"]
@@ -140,6 +157,7 @@ class FForecast:
 
         if self._type == "current":
             data_list.append(dt['humidity'])
+            return data_list
         elif self._type == "hourly":
             it = self.len_hourly
         else:
