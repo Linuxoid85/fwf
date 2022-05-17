@@ -1,5 +1,4 @@
 *.kdev4
 *cache/
 *fwf.*
-*src/test.py
-*src/settings.json
+*tmp/*

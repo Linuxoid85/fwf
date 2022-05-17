@@ -1,0 +1,13 @@
+{
+    "app": {
+        "lang": "ru",
+        "units": "metric"
+    },
+    "forecast": {
+        "lat": 0,
+        "lon": 0
+    },
+    "api": {
+        "appid": "enter-you-api-key"
+    }
+}
