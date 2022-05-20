@@ -47,8 +47,7 @@ class FWFLocatMgr:
             # найденными локациями и возвращающую список, состоящий из
             # **одного** словаря с информацией только о той локации, которую
             # выбрал пользователь.
-            select_data = func()
-            raw_data = select_data
+            raw_data = func()
         data = {
             "name": raw_data[0]['name'],
             "country": raw_data[0]['country'],
@@ -60,14 +59,21 @@ class FWFLocatMgr:
     def select_location(self) -> list:
         it = len(self.data)
 
+        print(
+                "| № | {0:13} | {1:28} | {2:25} |".format(
+                "city", "state", "country"
+            ),
+            f"\n{'-' * 80}"
+        )
         for i in range(it):
-            print(f"""[{i}] - {
-                self.data[i]['name']
-            },{
-                self.data[i].get('state')
-            },{
-                self.data[i]['country']
-            }""")
+            print(
+                    "| {0} | {1:13} | {2:28} | {3:25} |".format(
+                    i,
+                    self.data[i]['name'],
+                    self.data[i].get('state'),
+                    self.data[i]['country']
+                )
+            )
 
         sel = int(input("Select the NUMBER of the location you need: "))
         return [self.data[sel]]
@@ -105,14 +111,12 @@ class FForecast:
         self.len_hourly = len(self.data["hourly"])
         self.len_daily = len(self.data["daily"])
 
-    def _get_it(self) -> int:
-        # NOTE: DEPRECATED
         if self._type == "daily":
-            return self.len_daily
+            self.it = self.len_daily
         elif self._type == "hourly":
-            return self.len_hourly
+            self.it = self.len_hourly
         else:
-            return -1
+            self.it = -1
 
     def make_cache(self, cache_dir):
         if not os.path.exists(cache_dir):
@@ -130,9 +134,7 @@ class FForecast:
         if self._type == "current":
             return [self._type_d["dt"]]
 
-        it = self._get_it()
-
-        for i in range(it):
+        for i in range(self.it):
             data = self._type_d[i]["dt"]
             data_list.append(data)
 
@@ -144,15 +146,13 @@ class FForecast:
         if self._type == "current":
             data_list.append(self._type_d['weather'][0]['description'])
             return data_list
-        else:
-            it = self._get_it()
+        
+        for i in range(self.it):
+            data = self._type_d[i]['weather'][0]['description']
+            data_list.append(data)
+            del(data)
 
-            for i in range(it):
-                data = self._type_d[i]['weather'][0]['description']
-                data_list.append(data)
-                del(data)
-
-            return data_list
+        return data_list
 
     def sun_rise_set(self) -> list:
         if self._type == "current":
@@ -183,9 +183,8 @@ class FForecast:
     def moon_rise_set(self) -> list:
         data_list = []
         data_dict = {}
-        it = self.len_daily
 
-        for i in range(it):
+        for i in range(self.it):
             for prm in "rise", "set":
                 data_dict[f"moon{prm}"] = self._type_d[i][f"moon{prm}"]
             data_list.append(data_dict)
@@ -204,9 +203,7 @@ class FForecast:
             data_list.append(data_dict)
             return data_list
 
-        it = self._get_it()
-
-        for i in range(it):
+        for i in range(self.it):
             data_dict = {}
             for prm in params:
                 data_dict[prm] = dt[i][prm]
@@ -222,12 +219,8 @@ class FForecast:
         if self._type == "current":
             data_list.append(dt['humidity'])
             return data_list
-        elif self._type == "hourly":
-            it = self.len_hourly
-        else:
-            it = self.len_daily
 
-        for i in range(it):
+        for i in range(self.it):
             data = self._type_d[i]['humidity']
             data_list.append(data)
 
