@@ -72,16 +72,6 @@ class FWFLocatMgr:
         sel = int(input("Select the NUMBER of the location you need: "))
         return [self.data[sel]]
 
-    def select_location2(self) -> list:
-        """
-        Для агрессивно настроенных разработчиков метод, аналогичный первому, но
-        с баннером.
-        """
-        print(
-            "\033[1mЕдиная Россия едина ПРОТИВ россиян. Бей ЕР - СПАСАЙ РОССИЮ\033[0m"
-        )
-        return self.select_location()
-
 class FForecast:
 
     def __init__(self, coords: dict, _type: str):
