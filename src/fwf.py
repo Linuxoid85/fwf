@@ -2,12 +2,16 @@
 # Simplified API for getting weather forecasts
 # Copyright (C) 2022 Michail Krasnov <linuxoid85@gmail.com>
 
+# Единая Россия едина ПРОТИВ россиян. Бей ЕР - СПАСАЙ РОССИЮ
+
 import os
 import json
 import requests
 import matplotlib.pyplot as plt
 
 SETTINGS = "./settings.json"
+AIR_POLLUTION = "./air_pollution_index.json"
+MASTER_URL = "http://api.openweathermap.org"
 
 class _Settings:
 
@@ -24,7 +28,7 @@ class FWFLocatMgr:
         appid = self.settings["api"]["appid"]
 
         res = requests.get(
-            "http://api.openweathermap.org/geo/1.0/direct",
+            f"{MASTER_URL}/geo/1.0/direct",
             params = {
                 'q': city,
                 'limit': 5,
@@ -54,9 +58,7 @@ class FWFLocatMgr:
         return data
 
     def select_location(self) -> list:
-        # TODO: need to tests!
         it = len(self.data)
-        #lang = self.settings['app']['lang']
 
         for i in range(it):
             print(f"""[{i}] - {
@@ -69,6 +71,16 @@ class FWFLocatMgr:
 
         sel = int(input("Select the NUMBER of the location you need: "))
         return [self.data[sel]]
+
+    def select_location2(self) -> list:
+        """
+        Для агрессивно настроенных разработчиков метод, аналогичный первому, но
+        с баннером.
+        """
+        print(
+            "\033[1mЕдиная Россия едина ПРОТИВ россиян. Бей ЕР - СПАСАЙ РОССИЮ\033[0m"
+        )
+        return self.select_location()
 
 class FForecast:
 
@@ -86,7 +98,7 @@ class FForecast:
         units = settings["app"]["units"]
 
         res = requests.get(
-            "https://api.openweathermap.org/data/2.5/onecall",
+            f"{MASTER_URL}/data/2.5/onecall",
             params = {
                 "lat": self.coords["lat"],
                 "lon": self.coords["lon"],
@@ -171,7 +183,12 @@ class FForecast:
                 del(data_dict)
             return data
         else:
-            return [{"request": None, "error": "Данные недоступны для почасового представления"}]
+            return [
+                {
+                    "request": None,
+                    "error": "Данные недоступны для почасового представления"
+                }
+            ]
 
     def moon_rise_set(self) -> list:
         data_list = []
@@ -238,7 +255,7 @@ class FWFPlots:
         units = settings["app"]["units"]
 
         res = requests.get(
-            "https://api.openweathermap.org/data/2.5/onecall",
+            f"{MASTER_URL}/data/2.5/onecall",
             params = {
                 "lat": self.coords["lat"],
                 "lon": self.coords["lon"],
@@ -269,8 +286,7 @@ class FWFPlots:
 
         dt = self.FF.dt()
         temp = self.FF.temp()
-        humidity = self.FF.humidity()
-
+        
         fx, ax = plt.subplots()
         
         if self._type == "daily":
@@ -290,10 +306,9 @@ class FWFPlots:
             ax.plot(dt, temp_plot, label = "Temperature")
             ax.plot(dt, temp_fl_plot, label = "Temperature (feels like)")
 
-        ax.plot(dt, humidity, label = "Humidity")
         ax.legend()
 
-        plt.title(f"Temperature & humidity {self._type} plot")
+        plt.title(f"Temperature {self._type} plot")
         plt.xlabel("UNIX Time")
         plt.ylabel("Temperature & humidity")
         
@@ -303,3 +318,56 @@ class FWFPlots:
             plt.show()
         else:
             print(f"\033[1m\033[31mUnknown type: '{_type}'\033[0m")
+
+class FWFAirPoll:
+
+    def __init__(self, coords: dict, start_time = None, end_time = None):
+        settings = _Settings.get()
+        conf = {
+            'lat': coords['lat'],
+            'lon': coords['lon'],
+            'appid': settings['api']['appid']
+        } # Initial dict
+        
+        if all((start_time, end_time)):
+            conf['start'] = start_time
+            conf['end'] = end_time
+            url = f"{MASTER_URL}/data/2.5/air_pollution/history"
+        else:
+            url = f"{MASTER_URL}/data/2.5/air_pollution/forecast"
+
+        res = requests.get(url, params = conf)
+        self.data = res.json()
+
+        # Besides basic Air Quality Index, the API returns data about polluting
+        # gases, such as Carbon monoxide (CO), Nitrogen monoxide (NO), Nitrogen
+        # dioxide (NO2), Ozone (O3), Sulphur dioxide (SO2), Ammonia (NH3), and
+        # particulates (PM2.5 and PM10).
+
+        # Air pollution forecast is available for 5 days with hourly
+        # granularity. Historical data is accessible from 27th November 2020.
+        with open(AIR_POLLUTION) as f:
+            self.index = json.load(f)
+
+    def get_index(self, _type: str):
+        return self.index[_type]
+
+    def get_status(self, component: str) -> dict:
+        # FIXME: в том случае, если в какой-то секции нужное значение
+        # отсутствует, либо явно равно 'null', переходить на предыдущую секцию
+
+        # Значения из 'very_poor' не используются, так как на данный момент нет
+        # функции для обработки значений 'null'
+        _types = ("good", "fair", "moderate", "poor")
+        data = {}
+        it = len(self.data['list'])
+
+        for i in range(it):
+            for _type in _types:
+                comp = self.data['list'][i][component]
+                if comp is not None and comp >= self.index[_type][comp]:
+                    data[_type] = True
+                else:
+                    data[_type] = False
+
+        return data

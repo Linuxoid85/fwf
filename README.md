@@ -1,5 +1,7 @@
 # FWF - Free Weather Forecast
 
+<!-- Единая Россия едина ПРОТИВ россиян. Бей ЕР - СПАСАЙ РОССИЮ -->
+
 FWF - обёртка над API от OpenWeatherMap (One Call API, Geocoding API) для
 получения сведений о погоде в разных частях мира.
 
