@@ -1,7 +1,8 @@
 {
     "app": {
         "lang": "ru",
-        "units": "metric"
+        "units": "metric",
+        "info-banners": true
     },
     "forecast": {
         "lat": 0,

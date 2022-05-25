@@ -2,18 +2,36 @@
 # Simplified API for getting weather forecasts
 # Copyright (C) 2022 Michail Krasnov <linuxoid85@gmail.com>
 
-# Единая Россия едина ПРОТИВ россиян. Бей ЕР - СПАСАЙ РОССИЮ
-
 import os
 import json
 import requests
 import matplotlib.pyplot as plt
 
 SETTINGS = "./settings.json"
+CACHE = "./cache.json"
 AIR_POLLUTION = "./air_pollution_index.json"
 MASTER_URL = "http://api.openweathermap.org"
 
 class _Settings:
+
+    """
+    Settings file example:
+
+    {
+        "app": {
+            "lang": "your language",
+            "units": "standard/metric/imperial",
+            "info_banners": true/false
+        },
+        "forecast": {
+            "lat": int,
+            "lon": int
+        },
+        "api": {
+            "appid": "your API key (https://openweathermap.org)"
+        }
+    }
+    """
 
     @staticmethod
     def get() -> dict:
@@ -37,6 +55,15 @@ class FWFLocatMgr:
         )
         self.data = res.json()
 
+    def _print_msg(self, a, b, c, d):
+        """Private method for select_location()"""
+        print(
+            "| {0} | {1:13} | {2:25} | {3:25} |".format(
+                a, b, str(c), d
+            )
+        )
+        print(f"\n{'-' * 80}")
+
     def search_location(self, func) -> dict:
         raw_data = self.data
 
@@ -58,21 +85,15 @@ class FWFLocatMgr:
 
     def select_location(self) -> list:
         it = len(self.data)
+        
+        self._print_msg("№", "city", "state", "country")
 
-        print(
-                "| № | {0:13} | {1:28} | {2:25} |".format(
-                "city", "state", "country"
-            ),
-            f"\n{'-' * 80}"
-        )
         for i in range(it):
-            print(
-                    "| {0} | {1:13} | {2:28} | {3:25} |".format(
-                    i,
-                    self.data[i]['name'],
-                    self.data[i].get('state'),
-                    self.data[i]['country']
-                )
+            self._print_msg(
+                i,
+                self.data[i]['name'],
+                self.data[i].get('state'),
+                self.data[i]['country'],
             )
 
         sel = int(input("Select the NUMBER of the location you need: "))
@@ -81,9 +102,6 @@ class FWFLocatMgr:
 class FForecast:
 
     def __init__(self, coords: dict, _type: str):
-        # TODO: добавить использование кеша, если он создавался менее получаса
-        # назад. Это требуется для уменьшения доступов к API.
-
         self.coords = coords
         self._type = _type
 
@@ -93,19 +111,27 @@ class FForecast:
         lang = settings["app"]["lang"]
         units = settings["app"]["units"]
 
-        res = requests.get(
-            f"{MASTER_URL}/data/2.5/onecall",
-            params = {
-                "lat": self.coords["lat"],
-                "lon": self.coords["lon"],
-                "exclude": "minutely,alerts",
-                "units": units,
-                "lang": lang,
-                "appid": api_key
-            }
-        )
-        
-        self.data = res.json()
+        if os.path.exists(CACHE):
+            with open(CACHE) as f:
+                data = json.load(f)
+
+            if data["current"]["dt"] >= 1800:
+                res = requests.get(
+                    f"{MASTER_URL}/data/2.5/onecall",
+                    params = {
+                        "lat": self.coords["lat"],
+                        "lon": self.coords["lon"],
+                        "exclude": "minutely,alerts",
+                        "units": units,
+                        "lang": lang,
+                        "appid": api_key
+                    }
+                )
+                self.data = res.json()
+
+            else:
+                self.data = data
+
         self._type_d = self.data[_type]
         
         self.len_hourly = len(self.data["hourly"])
@@ -269,8 +295,8 @@ class FWFPlots:
 
         dt = self.FF.dt()
         temp = self.FF.temp()
-        
         fx, ax = plt.subplots()
+        del(fx)
         
         if self._type == "daily":
             temp_day_plot = []
@@ -332,8 +358,10 @@ class FWFAirPoll:
         with open(AIR_POLLUTION) as f:
             self.index = json.load(f)
 
-    def get_index(self, _type: str):
-        return self.index[_type]
+    def get_index(self, _type = None):
+        if _type is not None:
+            return self.index[_type]
+        return self.index
 
     def get_status(self, component: str) -> dict:
         # FIXME: в том случае, если в какой-то секции нужное значение
